@@ -16,7 +16,7 @@ public class RotaPedidos {
                 from("file:pedidos?delay=5s&noop=true").
                 log("${id}").
                 marshal().xmljson().
-                log("{body}").
+                log("${body}").
                 setHeader("CamelFileName", simple("${file:name.noext}.json")).
                 to("file:saida");
             }
