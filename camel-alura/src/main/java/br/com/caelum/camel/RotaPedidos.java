@@ -15,7 +15,8 @@ public class RotaPedidos {
 		//rotaPedidos.configurarRotaArquivoXMLParaWebServiceHTTPGET();
 		//rotaPedidos.configurarSubRotas();
 		//rotaPedidos.configurarSubRotasExecutadasEmParalelo();
-		rotaPedidos.configurarSubRotasComSeda();
+		//rotaPedidos.configurarSubRotasComSeda();
+		rotaPedidos.configurarSubRotasTransformacaoXSLTComIntegracaoSOAP();
     }
 	
 	/**
@@ -239,6 +240,55 @@ public class RotaPedidos {
 				    setProperty("ebookId", xpath("/item/livro/codigo/text()")).
 				    setHeader(Exchange.HTTP_QUERY,
 				            simple("clienteId=${property.email}&pedidoId=${property.pedidoId}&ebookId=${property.ebookId}")).
+				to("http4://localhost:8080/webservices/ebook/item");
+			}
+			
+		});
+
+		context.start();
+		Thread.sleep(20000);
+		context.stop();
+	}	
+	
+	/**
+	 * Transformando XML com XSLT e enviando para um WS Soap
+	 * @throws Exception
+	 */
+	private void configurarSubRotasTransformacaoXSLTComIntegracaoSOAP() throws Exception {
+
+		CamelContext context = new DefaultCamelContext();
+		context.addRoutes(new RouteBuilder() {
+
+			@Override
+			public void configure() throws Exception {
+
+				from("file:pedidos?delay=5s&noop=true").
+			    routeId("rota-pedidos").
+				multicast().
+				    to("direct:soap").
+				        log("Chamando soap com ${body}").
+				    to("direct:http");
+	
+				from("direct:soap").
+				    routeId("rota-soap").
+				to("xslt:pedido-para-soap.xslt").
+				    log("Resultado do template: ${body}").
+				    setHeader(Exchange.CONTENT_TYPE,constant("text/xml")).
+				to("http4://localhost:8080/webservices/financeiro");
+	
+				from("direct:http").
+				    routeId("rota-http").
+				        setProperty("pedidoId", xpath("/pedido/id/text()")).
+				        setProperty("email", xpath("/pedido/pagamento/email-titular/text()")).
+				    split().
+				        xpath("/pedido/itens/item").
+				    filter().
+				        xpath("/item/formato[text()='EBOOK']").
+				    setHeader("CamelFileName", simple("${file:name}.json")).
+				    setProperty("ebookId", xpath("/item/livro/codigo/text()")).
+				    setProperty("ebookId", xpath("/item/livro/codigo/text()")).
+				    setHeader(Exchange.HTTP_QUERY,
+				                simple("clienteId=${property.email}&pedidoId=${property.pedidoId}&ebookId=${property.ebookId}")).
 				to("http4://localhost:8080/webservices/ebook/item");
 			}
 			
