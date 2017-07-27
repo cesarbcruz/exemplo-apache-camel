@@ -20,8 +20,8 @@ public class RotaPedidos {
 		//rotaPedidos.configurarSubRotasComSeda();
 		//rotaPedidos.configurarSubRotasTransformacaoXSLTComIntegracaoSOAP();
 		//rotaPedidos.configurarRotaComvalidacaoXSD();
-		rotaPedidos.configurarRotaParaConsumirUmaFilaJMS();
-		//rotaPedidos.configurarRotaEnviarXMLFileParaFilaJMS();
+		//rotaPedidos.configurarRotaParaConsumirUmaFilaJMS();
+		rotaPedidos.configurarRotaEnviarXMLFileParaFilaJMS();
     }
 	
 	/**
