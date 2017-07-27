@@ -13,7 +13,9 @@ public class RotaPedidos {
 		//rotaPedidos.configurarRotaArquivoXMLParaArquivoJSON();
 		//rotaPedidos.configurarRotaArquivoXMLParaWebServiceHTTPPost();
 		//rotaPedidos.configurarRotaArquivoXMLParaWebServiceHTTPGET();
-		rotaPedidos.configurarSubRotas();
+		//rotaPedidos.configurarSubRotas();
+		//rotaPedidos.configurarSubRotasExecutadasEmParalelo();
+		rotaPedidos.configurarSubRotasComSeda();
     }
 	
 	/**
@@ -134,6 +136,99 @@ public class RotaPedidos {
 				to("mock:soap");
 	
 				from("direct:http").
+				    routeId("rota-http").
+				    setProperty("pedidoId", xpath("/pedido/id/text()")).
+				    setProperty("email", xpath("/pedido/pagamento/email-titular/text()")).
+				    split().
+				        xpath("/pedido/itens/item").
+				    filter().
+				        xpath("/item/formato[text()='EBOOK']").
+				    setProperty("ebookId", xpath("/item/livro/codigo/text()")).
+				    setHeader(Exchange.HTTP_QUERY,
+				            simple("clienteId=${property.email}&pedidoId=${property.pedidoId}&ebookId=${property.ebookId}")).
+				to("http4://localhost:8080/webservices/ebook/item");
+			}
+			
+		});
+
+		context.start();
+		Thread.sleep(20000);
+		context.stop();
+	}	
+	
+	/**
+	 * O multicast() possui uma configuração para chamar cada sub-rota em uma Thread separada. <br>
+	 * Assim as sub-rotas serão processadas em paralelo.<br>
+	 * Devemos ter cuidado com essa opção pois possíveis problemas (exceções) também ocorrem em paralelo que pode complicar a análise do problema.
+	 * @throws Exception
+	 */
+	private void configurarSubRotasExecutadasEmParalelo() throws Exception {
+
+		CamelContext context = new DefaultCamelContext();
+		context.addRoutes(new RouteBuilder() {
+
+			@Override
+			public void configure() throws Exception {
+
+				from("file:pedidos?delay=5s&noop=true").
+			    multicast().
+			        parallelProcessing().
+			            timeout(500). //millis
+			                to("direct:soap").
+			                to("direct:http");
+
+				from("direct:soap").
+				    routeId("rota-soap").
+				    log("chamando servico soap ${body}").
+				to("mock:soap");
+	
+				from("direct:http").
+				    routeId("rota-http").
+				    setProperty("pedidoId", xpath("/pedido/id/text()")).
+				    setProperty("email", xpath("/pedido/pagamento/email-titular/text()")).
+				    split().
+				        xpath("/pedido/itens/item").
+				    filter().
+				        xpath("/item/formato[text()='EBOOK']").
+				    setProperty("ebookId", xpath("/item/livro/codigo/text()")).
+				    setHeader(Exchange.HTTP_QUERY,
+				            simple("clienteId=${property.email}&pedidoId=${property.pedidoId}&ebookId=${property.ebookId}")).
+				to("http4://localhost:8080/webservices/ebook/item");
+			}
+			
+		});
+
+		context.start();
+		Thread.sleep(20000);
+		context.stop();
+	}	
+	
+	/**
+	 * Enquanto o direct usa o processamento síncrono, o seda usa assíncrono.<br>
+	 * É importante mencionar que seda não implementar qualquer tipo de persistência ou a recuperação, <br>
+	 * tudo é processado dentro da JVM. Se você precisa de persistência, confiabilidade ou processamento distribuído,<br> 
+	 * JMS é a melhor escolha. 
+	 * @throws Exception
+	 */
+	private void configurarSubRotasComSeda() throws Exception {
+
+		CamelContext context = new DefaultCamelContext();
+		context.addRoutes(new RouteBuilder() {
+
+			@Override
+			public void configure() throws Exception {
+
+				from("file:pedidos?delay=5s&noop=true").
+			    routeId("rota-pedidos").
+			    to("seda:soap").
+			    to("seda:http");
+
+				from("seda:soap").
+				    routeId("rota-soap").
+				    log("chamando servico soap ${body}").
+				to("mock:soap");
+	
+				from("seda:http").
 				    routeId("rota-http").
 				    setProperty("pedidoId", xpath("/pedido/id/text()")).
 				    setProperty("email", xpath("/pedido/pagamento/email-titular/text()")).
