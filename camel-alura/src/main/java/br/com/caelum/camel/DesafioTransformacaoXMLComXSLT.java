@@ -10,7 +10,8 @@ public class DesafioTransformacaoXMLComXSLT {
 	
 	public static void main(String [] args) throws Exception {
 		DesafioTransformacaoXMLComXSLT desafio = new DesafioTransformacaoXMLComXSLT();
-		desafio.movimentacoesXMLParaHtml();
+		//desafio.movimentacoesXMLParaHtml();
+		desafio.exemploTransformacaoComVvelocity();
 	}
 	
 	private void movimentacoesXMLParaHtml() throws Exception {
@@ -40,6 +41,30 @@ public class DesafioTransformacaoXMLComXSLT {
 				            "<movimentacao><valor>314.1</valor><data>12/12/2015</data><tipo>SAIDA</tipo></movimentacao>" + 
 				            "<movimentacao><valor>56.99</valor><data>13/12/2015</data><tipo>SAIDA</tipo></movimentacao>" + 
 				        "</movimentacoes>");
+	        
+	        Thread.sleep(2000);
+	        
+	        context.stop();
+	}
+	
+	private void exemploTransformacaoComVvelocity() throws Exception {
+		 CamelContext context = new DefaultCamelContext();
+
+	        context.addRoutes(new RouteBuilder() {
+
+	            @Override
+	            public void configure() throws Exception {
+	            	from("direct:entrada").
+	                setHeader("data", constant("8/12/2015")).
+	                to("velocity:template.vm").
+	                log("${body}");
+	            }
+	        });     
+
+	        context.start();
+	        
+	        ProducerTemplate producer = context.createProducerTemplate();
+	        producer.sendBody("direct:entrada", "Apache Camel rocks!!!");
 	        
 	        Thread.sleep(2000);
 	        
