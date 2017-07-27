@@ -21,6 +21,7 @@ public class RotaPedidos {
 		//rotaPedidos.configurarSubRotasTransformacaoXSLTComIntegracaoSOAP();
 		//rotaPedidos.configurarRotaComvalidacaoXSD();
 		rotaPedidos.configurarRotaParaConsumirUmaFilaJMS();
+		//rotaPedidos.configurarRotaEnviarXMLFileParaFilaJMS();
     }
 	
 	/**
@@ -436,5 +437,31 @@ public class RotaPedidos {
 		context.stop();
 	}
 	
+	/**
+	 * Exemplo de rota que obtem arquivos xml de um diretório e envia para uma fila de mensagem activemq
+	 * @throws Exception
+	 */
+	
+	private void configurarRotaEnviarXMLFileParaFilaJMS() throws Exception{
+		CamelContext context = new DefaultCamelContext();
+		context.addComponent("activemq", ActiveMQComponent.activeMQComponent("tcp://localhost:61616"));
+		
+		context.addRoutes(new RouteBuilder() {
+			
+			@Override
+			public void configure() throws Exception {
+				
+				from("file:pedidos?noop=true").
+				to("activemq:queue:pedidos");
+				
+			}
+		});
+		
+		context.start();
+		Thread.sleep(20000);
+		context.stop();
+		
+		
+	}
 
 }
